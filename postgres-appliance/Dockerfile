@@ -366,6 +366,38 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 ENV PATRONIVERSION=2.1.0
 ENV WALE_VERSION=1.1.1
 ENV WALG_VERSION=v0.2.19
+ENV PGBACKREST_VERSION=2.28
+ENV COMPONENT_TAR_DIR="downloads"
+ENV COMPONENT_TAR_OUT="2.28-pgbackrest.tgz"
+ENV DOWNLOAD_INFO="download_info"
+
+RUN export DEBIAN_FRONTEND=noninteractive \
+    && apt-get update \
+    && apt-get install -y jq vim wget git-core && \
+    apt-get install -y gcc make libssl-dev libbz2-dev libdigest-sha-perl && \
+    apt-get install -y python3-pip bison flex libreadline-dev python3-psycopg2 && \
+    apt-get install -y pkg-config libssl-dev libxml2-dev libpq-dev liblz4-dev && \
+    pip3 install --upgrade setuptools \
+    && pgbackrest_tar_name="${PGBACKREST_VERSION}.tar.gz" \
+    && download_uri="https://github.com/pgbackrest/pgbackrest/archive/release/${pgbackrest_tar_name}" \
+    && wget -v "${download_uri}" \
+    && echo "download_uri: ${download_uri}" >> ${DOWNLOAD_INFO} \
+    && echo "download_method: wget" >> ${DOWNLOAD_INFO} \
+    && echo "download_shasum: \"$(shasum ${pgbackrest_tar_name} | cut -d " " -f 1 )\"" >> ${DOWNLOAD_INFO} \
+    && pgbackrest_tmp=/tmp/${COMPONENT_TAR_DIR} \
+    && mkdir ${pgbackrest_tmp} \
+    && tar zxvf ${pgbackrest_tar_name} -C ${pgbackrest_tmp} --strip-components=1 \
+    && cd ${pgbackrest_tmp}/src \
+    && ./configure \
+    && make -s -C ${pgbackrest_tmp}/src \
+    && tar -zcvf ${COMPONENT_TAR_OUT} pgbackrest \
+    && mv pgbackrest /usr/local/bin \
+    && cd - \
+    && chmod 755 /usr/local/bin/pgbackrest \
+    && mkdir -p /var/log/pgbackrest \
+    && chmod 770 /var/log/pgbackrest
+
+
 RUN export DEBIAN_FRONTEND=noninteractive \
     && set -ex \
     && BUILD_PACKAGES="python3-pip python3-wheel python3-dev git patchutils binutils" \
